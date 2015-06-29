@@ -1,0 +1,77 @@
+'''
+Coursera:
+- Software Defined Networking (SDN) course
+-- Programming Assignment 2
+
+Professor: Nick Feamster
+Teaching Assistant: Arpit Gupta, Muhammad Shahbaz
+'''
+
+from mininet.topo import Topo
+from mininet.net import Mininet
+from mininet.util import irange, dumpNodeConnections
+from mininet.link import TCLink
+from mininet.log import setLogLevel
+from mininet.cli import CLI
+
+class CustomTopo(Topo):
+    "Simple Data Center Topology"
+
+    "linkopts - (1:core, 2:aggregation, 3: edge) parameters"
+    "fanout - number of child switch per parent switch"
+    def __init__(self, linkopts1, linkopts2, linkopts3, fanout=2, **opts):
+        # Initialize topology and default options
+        """Init.
+            k= numeber of fanout in agregation, edge and host
+            linkopts1 = for specifying performance parameters for the links between core and aggregation switches.
+            linlopts2 = for specifying performance parameters for the links between aggregation and edge switches.
+            linkopts3 = for specifying performance parameters for the links between edge switches and host
+        """
+        self.linkopts1 = linkopts1
+        self.linkopts2 = linkopts2
+        self.linkopts3 = linkopts3
+        self.fanout = fanout
+
+
+        Topo.__init__(self, **opts)
+        # Add your logic here ...
+        swCore = self.addSwitch('c0')
+
+        for i in range(fanout):
+            swAggregation = self.addSwitch('a%s' %(i+1) )
+            link = self.addLink(swCore, swAggregation,**linkopts1)
+            print ("i=%d SW:%s" %(i,swAggregation) )
+            for j in range(fanout):
+                swEdge = self.addSwitch('e%s' %(j + 1 + i*fanout) )
+                link = self.addLink(swAggregation, swEdge, **linkopts2)
+                print ("j=%d SW:%s" %(j,swEdge) )
+
+                for k in range(fanout):
+                    index = k + 1 + i*fanout +j*fanout
+                    host = self.addHost('h%s' %index)
+                    link = self.addLink(swEdge, host, **linkopts3)
+                    print ("k=%d H:%s" %(k, host) )
+
+def test():
+    "create the topology"
+    link1 = dict(bw=1, delay='10ms')
+    link2 = dict(bw=2, delay='20ms')
+    link3 = dict(bw=3, delay='30ms')
+    topo = CustomTopo(link1, link2, link3, fanout=3)
+    net = Mininet(topo, link=TCLink)
+    net.start()
+    print "Dumping host connections"
+    dumpNodeConnections(net.hosts)
+    print "Testing network connectivity"
+    net.pingAll()
+    #CLI(net)
+    net.stop()
+
+if __name__=='__main__':
+    #log of mininet
+    setLogLevel('info')
+    test()
+
+
+
+topos = { 'custom': ( lambda: CustomTopo() ) }
